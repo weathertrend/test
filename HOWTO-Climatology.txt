@@ -1,0 +1,140 @@
+
+# https://ec2-54-171-91-95.eu-west-1.compute.amazonaws.com:8888
+# password: raca2tresmea
+# En New (a la derecha), abrir una Terminal
+cd dev/projects/forecast/monthly
+
+#==================================================================================================================================================
+	CIRCULATION PATTERNS
+#==================================================================================================================================================
+# Help and usage
+	circulation_patterns.py -h
+
+# Index DataBase
+The file indexes.db (located in ~/prod/config/climate) covers the info to access and load the indexes.
+
+# Update the Indexes
+The daily values are downloaded from the URL site, currently from the KNMI site
+For all indexes (remove -log option for a silent run)
+	circulation_patterns.py -update -log
+
+# -show -save options
+At least one of them is asked to run the analysis, otherwise there's nothing to do...
+-show, shows the figure only. To save it, -save
+
+# To see the saved figure, use the Jupyter notebook
+
+# Boxplot analysis
+The red line is the P50 or median. The box covers the P25-P75 range.
+The up/down marks indicates the tails of the distribution. Crosses are outlayer or values very distant.
+    
+# NAO and AO analysis for the whole period.
+	circulation_patterns.py -index_list NAO AO -show -save
+
+
+# NAO analysis for the whole period by month
+	circulation_patterns.py -index_list NAO -by month -save
+
+# NAO analysis for November and December for the years 2000 to 2015
+	circulation_patterns.py -index_list NAO -years 2000:2015 -months Nov Dec -save
+
+# NAO analysis for June to August for the years 2000 to 2015 by weeks
+	circulation_patterns.py -index_list NAO -years 2000:2015 -months Jun:Aug -by week -save
+
+# NAO analysis for weeks 20 to 22 and 31 the years 2000 to 2015 and 1997
+	circulation_patterns.py -index_list NAO -years 2000:2015 1997 -weeks 20:22 31 -save
+
+# NAO analysis for November for the years 2000 to 2015 by day
+	circulation_patterns.py -index_list NAO -years 2000:2015 -months Nov -by day -save
+
+	
+#==================================================================================================================================================
+#        VARIABLES AVAILABLE
+#==================================================================================================================================================
+Mean Sea Level Pressure       : msl
+2m Temperature                : 2t
+Geopetential height @ 500 hPa : z
+Total precipitation           : tp
+
+
+#==================================================================================================================================================
+#        PERIOD OF ANALYSIS
+#==================================================================================================================================================
+1979 to 2015
+
+
+#==================================================================================================================================================
+# 	EXAMPLES
+#==================================================================================================================================================
+1) Run MSL during November 2000
+quick_climate.py -parameter msl -months Nov -years 2000
+
+2) Run 2m temperature during November 2000 Abrreviated mode
+quick_climate.py -p 2t -m Nov -y 1990:1992
+
+3) Run Geopetential height during November 1990 to 1998
+quick_climate.py -p z -m Nov -y 1990:1998
+
+4) Run total precipitation during November 1990 to 1998 and 2004
+quick_climate.py -p tp -m Nov -y 1990:1998 2004
+
+5) Run MSL during November and January 1990 to 1998 and 2004
+quick_climate.py -p msl -m Nov Jan -y 1990:1998 2004
+
+6) Run 2m temperature during September to November 1990 to 1998 and 2004
+quick_climate.py -p 2t -m Sep:Nov -y 1990:1998 2004
+
+7) Run Geopetential height during November April and October to December 1990 to 1998 and 2004
+quick_climate.py -p z -m Apr Oct:Dec -y 1990:1998 2004
+
+8) Run total precipitation during November April and October to December 1988 2001 to 2005
+quick_climate.py -p tp -m Apr Oct:Dec -y 1988 2001:2005
+
+9) Run MSL during November April to June and October 1988 2001 to 2005
+quick_climate.py -p msl -m Apr:Jun Oct -y 1988 2001:2005
+
+
+#==================================================================================================================================================
+	MONTHLY VERIFICATION
+#==================================================================================================================================================
+
+# The climatology during the period 1979-2015 has been generated for all months and all parameters
+for mon in Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec ; do echo $mon; climatology_do.py -config climatology_1979_2015_2t -m ${mon} -y 1979:2015 -param 2t -level surface -out All_months_All_params_climatology_1979-2015.h5; done
+
+# The output file is /archive/climate/climatology/All_months_All_params_climatology_1979-2015.h5
+
+
+# New data now are expected
+------------------------------------------------------------------------------------------------------------
+# A first attempt of verification is made upon the Deterministic Analysis from the TIGGE DataBase
+# In order to replicate the climatology, the 0p75 grid resolution is used instead than the original
+
+# Download the Analysis : T2m U10m V10m at 12Z (Step 0)
+get_ecmwf.py -config get_ECMWF_Analysis_Surface -check &>/dev/null &
+
+# Download the Analysis : RAIN at 00Z and 12Z (Step 12)
+get_ecmwf.py -config get_ECMWF_Analysis_Surface_rain -check &>/dev/null &
+
+
+# Generate the HDF5 file with the selected dates, parameters and area
+store_do.py -dir /archive/ECMWF/grib -file ECMWF_NoAm_0p75_2016-11-01_12_Deterministic_Surface.grib -rundate 2016-12-01 2016-12-31 -runtime 12 -step 0 -mname analysis -level 2 -lname surface -lat 70:30 -lon " -60:50" -out /archive/climate/storage/ECMWF_NoHem_analysis.h5 -param 2t -nomember
+store_do.py -dir /archive/ECMWF/grib -file ECMWF_NoAm_0p75_2016-11-01_12_Deterministic_Pressure_gh.grib -rundate 2016-12-01 2016-12-31 -runtime 12 -step 0 -mname analysis -level 500 -lat 70:30 -lon " -60:50" -out /archive/climate/storage/ECMWF_NoHem_analysis.h5 -param gh -nomember
+
+# Generate the monthly mean
+analysis_do.py -y 2016 -m Dec -param 2t -config analysis_ECMWF -level surface
+
+# Generate anomalies
+compare_climatology.py -config analysis_ECMWF -climatology Long_climatology_Euro_1979_2015.h5 -source monthly_analysis_ECMWF.h5 -m Dec -y 2016 -param 2t -level surface -save -plotatt temp
+
+# Same for total precipitation
+store_do.py -dir /archive/ECMWF/grib -file ECMWF_NoAm_0p75_2016-11-01_12_Deterministic_Surface_tp.grib -rundate 2016-12-01 2016-12-31 -runtime 0 12 -step 0 -mname analysis -level 0 -lname surface -lat 70:30 -lon " -60:50" -out /archive/climate/storage/ECMWF_NoHem_analysis.h5 -param tp -nomember
+
+for mon in Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec ; do echo $mon; climatology_do.py -config climatology_1979_2015_tp -out Long_climatology_Euro_1979_2015 -m ${mon} -y 1979:2015 -param 2t -level surface; done
+
+analysis_do.py -y 2016 -m Dec -param tp -config analysis_ECMWF -level surface
+
+compare_climatology.py -config analysis_ECMWF -climatology Long_climatology_Euro_1979_2015.h5 -source monthly_analysis_ECMWF.h5 -m Dec -y 2016 -param tp -level surface -save -plotatt tp_mm
+
+
+# For wind speed
+The wind speed parameter needs to be generated first.
