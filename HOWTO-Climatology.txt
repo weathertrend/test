@@ -1,6 +1,4 @@
 
-# https://ec2-54-171-91-95.eu-west-1.compute.amazonaws.com:8888
-# password: raca2tresmea
 # En New (a la derecha), abrir una Terminal
 cd dev/projects/forecast/monthly
 
